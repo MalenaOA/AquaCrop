@@ -18,7 +18,8 @@ def read_clock_paramaters(
 
         sim_end_time (str): simulation start date
 
-        off_season (bool): simulate off season
+        off_season (bool): True, simulate off season
+                           False, skip ahead to next season post-harvest
 
     Returns:
 
