@@ -217,7 +217,7 @@ class AquaCropModel:
             self._param_struct, self.irrigation_management, self._clock_struct
         )
 
-        self._clock_struct = read_clock_parameters(
+        self._clock_struct = read_clock_paramaters(
 	            self.sim_start_time, self.sim_end_time, self.off_season
 	        )
 
