@@ -80,7 +80,7 @@ class AquaCropModel:
         groundwater: Stores information on water table parameters
 
         co2_concentration: Defines CO2 concentrations
-
+        off_season: (True) simulate off-season or (False) skip ahead to start of next growing season
 
     """
 
@@ -110,6 +110,7 @@ class AquaCropModel:
         fallow_field_management: Optional["FieldMngt"] = None,
         groundwater: Optional["GroundWater"] = None,
         co2_concentration: Optional["CO2"] = None,
+        off_season: bool=False,
     ) -> None:
 
         self.sim_start_time = sim_start_time
@@ -122,6 +123,7 @@ class AquaCropModel:
 
         self.irrigation_management = irrigation_management
         self.field_management = field_management
+        self.off_season = off_season
         self.fallow_field_management = fallow_field_management
         self.groundwater = groundwater
 
@@ -215,6 +217,11 @@ class AquaCropModel:
             self._param_struct, self.irrigation_management, self._clock_struct
         )
 
+        self._clock_struct = read_clock_parameters(
+	            self.sim_start_time, self.sim_end_time, self.off_season
+	        )
+
+        
         # read field management
         self._param_struct = read_field_management(
             self._param_struct, self.field_management, self.fallow_field_management
