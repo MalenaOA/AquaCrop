@@ -37,7 +37,7 @@ from .entities.irrigationManagement import IrrigationManagement
 from .entities.output import Output
 from .initialize.compute_variables import compute_variables
 from .initialize.create_soil_profile import create_soil_profile
-from .initialize.read_clocks_parameters import read_clock_parameters
+from .initialize.read_clocks_parameters import read_clock_paramaters
 from .initialize.read_field_managment import read_field_management
 from .initialize.read_groundwater_table import read_groundwater_table
 from .initialize.read_irrigation_management import read_irrigation_management
@@ -81,9 +81,6 @@ class AquaCropModel:
 
         co2_concentration: Defines CO2 concentrations
 
-        off_season: (True) simulate off-season or (False) skip ahead to start of 
-                    next growing season
-
 
     """
 
@@ -99,6 +96,7 @@ class AquaCropModel:
     _init_cond: "InitialCondition"
     _outputs: "Output"
     _weather: "DataFrame"
+
 
     def __init__(
         self,
