@@ -37,7 +37,7 @@ from .entities.irrigationManagement import IrrigationManagement
 from .entities.output import Output
 from .initialize.compute_variables import compute_variables
 from .initialize.create_soil_profile import create_soil_profile
-from .initialize.read_clocks_parameters import read_clock_paramaters
+from .initialize.read_clocks_parameters import read_clock_parameters
 from .initialize.read_field_managment import read_field_management
 from .initialize.read_groundwater_table import read_groundwater_table
 from .initialize.read_irrigation_management import read_irrigation_management
@@ -80,7 +80,10 @@ class AquaCropModel:
         groundwater: Stores information on water table parameters
 
         co2_concentration: Defines CO2 concentrations
-        off_season: (True) simulate off-season or (False) skip ahead to start of next growing season
+
+        off_season: (True) simulate off-season or (False) skip ahead to start of 
+                    next growing season
+
 
     """
 
@@ -200,8 +203,8 @@ class AquaCropModel:
         """
 
         # Initialize ClockStruct object
-        self._clock_struct = read_clock_paramaters(
-            self.sim_start_time, self.sim_end_time
+        self._clock_struct = read_clock_parameters(
+            self.sim_start_time, self.sim_end_time, self.off_season
         )
 
         # get _weather data
@@ -217,11 +220,7 @@ class AquaCropModel:
             self._param_struct, self.irrigation_management, self._clock_struct
         )
 
-        self._clock_struct = read_clock_paramaters(
-	            self.sim_start_time, self.sim_end_time, self.off_season
-	        )
-
-        
+    
         # read field management
         self._param_struct = read_field_management(
             self._param_struct, self.field_management, self.fallow_field_management
