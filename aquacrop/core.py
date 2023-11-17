@@ -201,8 +201,8 @@ class AquaCropModel:
         """
 
         # Initialize ClockStruct object
-        self._clock_struct = read_clock_parameters(
-            self.sim_start_time, self.sim_end_time, self.off_season
+        self._clock_struct = read_clock_paramaters(
+            self.sim_start_time, self.sim_end_time
         )
 
         # get _weather data
