@@ -36,7 +36,7 @@ class Crop:
 
     """
 
-    def __init__(self, c_name, planting_date, harvest_date, Maturity, **kwargs):
+    def __init__(self, c_name, planting_date, harvest_date=None, **kwargs):
 
         self.Name = c_name
 
@@ -72,7 +72,7 @@ class Crop:
             self.Name = "custom"
             self.planting_date = planting_date  # Planting Date (mm/dd)
             self.harvest_date = harvest_date  # Latest Harvest Date (mm/dd)
-            self.Maturity = Maturity
+            
 
         elif c_name in crop_params.keys():
             self.__dict__.update(
