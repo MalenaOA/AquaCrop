@@ -41,7 +41,7 @@ def check_model_is_finished(
     # Check if at the end of last growing season ##
     # Allow model to exit early if crop has reached maturity or died, and in
     # the last simulated growing season
-    if (harvest_flag is True) and (season_counter == n_seasons - 1):
+    if (harvest_flag is True) and (season_counter == n_seasons):
         model_is_finished = True
 
     return model_is_finished
