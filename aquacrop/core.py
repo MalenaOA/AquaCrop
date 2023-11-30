@@ -252,7 +252,7 @@ class AquaCropModel:
         self,
         num_steps: int = 1,
         till_termination: bool = False,
-        initialize_model: bool = True,
+        initialize_model: bool = False,
         process_outputs: bool = False,
     ) -> bool:
         """
