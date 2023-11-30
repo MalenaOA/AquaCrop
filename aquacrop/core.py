@@ -251,7 +251,7 @@ class AquaCropModel:
     def run_model(
         self,
         num_steps: int = 1,
-        till_termination: bool = False,
+        till_termination: bool = True,
         initialize_model: bool = False,
         process_outputs: bool = False,
     ) -> bool:
