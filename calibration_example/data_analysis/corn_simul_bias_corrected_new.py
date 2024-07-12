@@ -1,14 +1,16 @@
+import os
+os.environ['DEVELOPMENT'] = 'DEVELOPMENT'
+
 import matplotlib.pyplot as plt
 import statsmodels.api as sm
 from statsmodels.tools.eval_measures import rmse
 from aquacrop.utils import prepare_weather, get_filepath
 from aquacrop import AquaCropModel, Soil, Crop, InitialWaterContent, IrrigationManagement
 
-
 import pandas as pd
-import matplotlib
-import statsmodels
-import matplotlib.pyplot as plt
+# import matplotlib
+# import statsmodels
+# import matplotlib.pyplot as plt
 import seaborn as sns
 import numpy as np
 import datetime
@@ -19,7 +21,7 @@ from sklearn.linear_model import LinearRegression
 from sklearn.metrics import r2_score, mean_squared_error, mean_absolute_error
 import sklearn.metrics as metrics
 #from pyswarm import pso
-import os
+
 from os import chdir, getcwd
 import statistics as stats
 import scipy
@@ -28,12 +30,14 @@ import hydroeval as he
 import pyswarms as ps
 from pyswarm import pso
 import random
-from ordered_set import OrderedSet
+# from ordered_set import OrderedSet
+import orderedset
+
 import warnings
 warnings.filterwarnings('ignore')
 
 
-os.chdir('/home/jupyter-wndlovu/calibration_example/') # change working directory
+os.chdir('D:\Malena\CHAMP\PyCHAMP\code_20240704\AquaCrop\calibration_example') # change working directory
 
 wd=getcwd()
 
@@ -42,17 +46,17 @@ from src.calibration_old import *
 
 
 # input files
-with open(wd + '/data/input_dict.pickle', 'rb') as input_data: 
+with open(wd + '\data\input_dict.pickle', 'rb') as input_data:
     input_dict = pickle.load(input_data) 
 
 
 
-planting_date = pd.read_csv(wd + '/data/CropPlantingDate_GMD4_WNdlovu_072423.csv')
-bias_correction = pd.read_csv(wd + '/data/CropBiasCorrectionParams_GMD4_Wndlovu_062424.csv')
+planting_date = pd.read_csv(wd + '\data\CropPlantingDate_GMD4_WNdlovu_072423.csv')
+bias_correction = pd.read_csv(wd + '\data\CropBiasCorrectionParams_GMD4_Wndlovu_062424.csv')
 
 
 
-defaults = pd.read_csv(wd + '/data/CropDefaultParams_GMD4_Wndlovu_062424.csv') # default model params
+defaults = pd.read_csv(wd + '\data\CropDefaultParams_GMD4_Wndlovu_062424.csv') # default model params
 defaults = defaults[defaults["Crop"] == 'Maize']
 
 
