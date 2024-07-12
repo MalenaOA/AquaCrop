@@ -36,8 +36,10 @@ import orderedset
 import warnings
 warnings.filterwarnings('ignore')
 
-
-os.chdir('D:\Malena\CHAMP\PyCHAMP\code_20240704\AquaCrop\calibration_example') # change working directory
+# Malena's PC ->
+# os.chdir('D:\Malena\CHAMP\PyCHAMP\code_20240704\AquaCrop\calibration_example')
+# Malena's Laptop ->
+os.chdir(r"C:\Users\m154o020\CHAMP\PyCHAMP\Summer2024\code_20240705\AquaCrop\calibration_example")
 
 wd=getcwd()
 
