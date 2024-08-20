@@ -1149,8 +1149,233 @@ def RunModelBiasCorrected(default_params, plnt_date, gridmet_data, soil_data, bi
                               
         return  model_counties_df #, county_flux_df, county_storage_df, county_gw_df, county_grwth_df (uncomment to return the ET, soil compartment moisture, water balance and crop growth dfs
        
+def RunModelBiasCorrectedPyCHAMP(default_params, plnt_date, gridmet_data, soil_data, bias_correction_params, start_grwth_period, end_grwth_period):
+    """ 
+    Function to run the AquaCrop model using calibration parameters for multiple counties. 
+    
+    Arguments:
+        default_params (DataFrame): Default parameters for the model specific to the study area.
+        plnt_date (DataFrame): Annual planting dates.
+        gridmet_data (DataFrame): Meteorological data.
+        soil_data (DataFrame): Soil data.
+        bias_correction_params (DataFrame): Bias correction parameters.
+        start_grwth_period (int): Month corresponding to the start of the growth period.
+        end_grwth_period (int): Month corresponding to the end of the growth period.
+
+    Returns:
+        model_counties_df (DataFrame): Simulated yield and irrigation, including bias-corrected values.
+    """
+    
+    model_counties_df = pd.DataFrame()
+
+    p_up2 = default_params['p_up2'].item()
+    p_up3 = default_params['p_up3'].item()
+
+    # Identify the beginning of the simulation (year) based on the gridmet data. Used to set the initial soil moisture conditions
+    simulation_start = gridmet_data['Year'].min()
+
+    while True:
+        if p_up2 < p_up3:
+            p_up2 = p_up2
+            p_up3 = p_up3
+        elif p_up2 > p_up3:
+            p_up2 = p_up3
+            p_up3 = p_up2
+        
+        irr_mngt = IrrigationManagement(
+            irrigation_method=default_params['irrig_method'].item(),
+            SMT=[default_params['smt1'].item(),
+                 default_params['smt1'].item(),
+                 default_params['smt2'].item(),
+                 default_params['smt3'].item()],
+            MaxIrr=default_params['maxirr'].item(),
+            AppEff=85,
+            MaxIrrSeason=default_params['maxirr_season'].item()
+        )
+
+        # Run model for each county + year combination
+        calib_counties = []
+        counties_grwth = []
+        counties_flux = []
+        counties_storage = []
+        county_gw = []
+
+        model_counties = []
+        soil_lay_con = [] # List for soil layer theta values
+
+        for ids in gridmet_data['crop_mn_yr'].unique():  # crop_mn_yr is the unique id
+            model_results_yield = []
+            model_results_grwth = []
+            model_results_flux = []
+            model_results_storage = []
+            gw_flux_lst = []
+
+            gridmet_df = gridmet_data[gridmet_data['crop_mn_yr'] == ids].drop_duplicates(subset='Date')
+            if gridmet_df.empty:
+                continue  # Skip if no data for this id
+            
+            soil_df = soil_data[soil_data['crop_mn_yr'] == ids]
+            if soil_df.empty:
+                continue  # Skip if no soil data
+            
+            countyname = gridmet_df['crop_mn_codeyear'].str.replace(r'^.*?(?=[a-z, A-Z])', '', regex=True).unique()[0].capitalize()
+            yr = gridmet_df['Year'].unique()[0]
+
+            wdf = gridmet_df[['MinTemp', 'MaxTemp', 'Precipitation', 'ReferenceET', 'Date']]
+
+            plnt_date2 = plnt_date[plnt_date['Year'] == yr]
+            crop_name = plnt_date2['CropGDD'].item()
+            pdate = plnt_date2['pdate'].tolist()[0][5:]
+            hdate = plnt_date2['late_har'].tolist()[0][5:]
+
+            crop = Crop(
+                c_name=crop_name,
+                Name=crop_name,
+                planting_date=pdate,
+                harvest_date=hdate,
+                Emergence=default_params['eme'].item(),
+                Maturity=default_params['mat'].item(),
+                HIstart=default_params['histart'].item(),
+                Flowering=default_params['flowering'].item(),
+                MaxRooting=default_params['maxrooting'].item(),
+                Senescence=default_params['senescence'].item(),
+                YldForm=default_params['yldform'].item(),
+                CCx=default_params['ccx'].item(),
+                CGC=default_params['ccx'].item() / plnt_date2['canopy'].item(),
+                Zmax=default_params['rtx'].item(),
+                HI0=default_params['hi'].item(),
+                WP=default_params['wp'].item(),
+                Kcb=default_params['kc'].item(),
+                a_HI=default_params['hipsveg'].item(),
+                Tmax_up=default_params['polmx'].item(),
+                Tmax_lo=default_params['polfin'].item(),
+                p_up2=default_params['p_up2'].item(),
+                p_up3=default_params['p_up3'].item()
+            )
+
+            sim_start = f'{yr}/01/01'
+            sim_end = f'{yr}/12/31'
+
+            weighted_soil = soil_df[soil_df['Year'] == yr]
+            if weighted_soil.empty:
+                continue  # Skip if no soil data for this year
+            
+            # Calculate pedotransfer functions
+            pred_thWP = ((-0.024*((weighted_soil['sand'][0])/100))) + ((0.487*((weighted_soil['clay'][0])/100))) + ((0.006*((weighted_soil['om'][0])/100))) + ((0.005*((weighted_soil['sand'][0])/100))*((weighted_soil['om'][0])/100))- ((0.013*((weighted_soil['clay'][0])/100))*((weighted_soil['om'][0])/100))+ ((0.068*((weighted_soil['sand'][0])/100))*((weighted_soil['clay'][0])/100))+ 0.031
+            wp = pred_thWP + (0.14 * pred_thWP) - 0.02
+            pred_thFC = ((-0.251*((weighted_soil['sand'][0])/100))) + ((0.195*((weighted_soil['clay'][0])/100)))+ ((0.011*((weighted_soil['om'][0])/100))) + ((0.006*((weighted_soil['sand'][0])/100))*((weighted_soil['om'][0])/100))- ((0.027*((weighted_soil['clay'][0])/100))*((weighted_soil['om'][0])/100))+ ((0.452*((weighted_soil['sand'][0])/100))*((weighted_soil['clay'][0])/100))+ 0.299
+            fc = pred_thFC + (1.283 * (np.power(pred_thFC, 2))) - (0.374 * pred_thFC) - 0.015
+            ts = weighted_soil["theta_s"][0]
+            ks = (weighted_soil['ksat'][0]) * 240
+
+            custom_soil = Soil('custom', cn=61, rew=7, dz=[0.1] * 12)
+            custom_soil.add_layer(thickness=2, thS=ts, Ksat=ks, thWP=wp, thFC=fc, penetrability=100.0)
+
+            # Initial soil moisture conditions
+            if yr == simulation_start:
+                initWC = InitialWaterContent(value=[str(default_params['init_water'].item())])
+            elif yr > simulation_start:
+                initWC = soil_lay_con[0]
+
+            # Run the AquaCrop model
+            model_c = AquaCropModel(
+                sim_start_time=sim_start,
+                sim_end_time=sim_end,
+                weather_df=wdf,
+                soil=custom_soil,
+                crop=crop,
+                initial_water_content=initWC,
+                irrigation_management=irr_mngt,
+                off_season=True
+            )
+
+            model_c.run_model(till_termination=True)
+            model_c_irr = model_c._outputs.final_stats.rename(columns={
+                'Yield (tonne/ha)': 'Calib Yield (t/ha)',
+                'Seasonal irrigation (mm)': 'Calib Irrigation (mm)'
+            })
+            model_c_irr['USDA Harvest Date'] = plnt_date2['har'].tolist()[0]
+            model_c_irr['Harvest Date (YYYY/MM/DD)'] = pd.to_datetime(model_c_irr['Harvest Date (YYYY/MM/DD)'], format='%Y-%m-%d')
+            model_c_irr['Year'] = model_c_irr['Harvest Date (YYYY/MM/DD)'].dt.year
+
+            model_results_yield.append(model_c_irr)
+            model_results_df = pd.concat(model_results_yield)
+            model_results_df['County'] = countyname
+            model_counties.append(model_results_df)
+
+            # Soil water storage
+            model_c_water_storage = model_c._outputs.water_storage
+            model_c_water_storage.iloc[-1] = model_c_water_storage.iloc[-2].values
+            model_c_water_storage['Date'] = wdf['Date'].values
+            model_c_water_storage['County'] = countyname
+
+            soil_water = model_c_water_storage.copy()
+            soil_water = soil_water.iloc[-1]
+
+            soil_water2 = soil_water[['th1', 'th2', 'th3', 'th4', 'th5', 'th6', 'th7', 'th8', 'th9', 'th10', 'th11', 'th12']].values.tolist()
+
+            initWC = InitialWaterContent(
+                wc_type='Num',  
+                method='Depth', 
+                depth_layer=[0.05, 0.15, 0.25, 0.35, 0.45, 0.55, 0.65, 0.75, 0.85, 0.95, 1.05, 1.15],
+                value=soil_water2
+            )
+            soil_lay_con.clear()
+            soil_lay_con.append(initWC)
+
+            model_results_storage.append(model_c_water_storage)
+            model_storage_df = pd.concat(model_results_storage)
+            counties_storage.append(model_storage_df)
+
+            # Evapotranspiration (ET)
+            model_c_et = model_c._outputs.water_flux
+            model_c_et['Date'] = wdf['Date'].values
+            model_c_et['Year'] = yr
+            model_c_et['Month'] = model_c_et['Date'].dt.month
+
+            gw_flux = model_c_et.copy()
+            gw_flux_lst.append(gw_flux)
+            gw_flux_df = pd.concat(gw_flux_lst)
+            gw_flux_df['County'] = countyname
+
+            county_gw.append(gw_flux_df)
+
+            model_c_et = model_c_et[(model_c_et['Month'] < end_grwth_period) & (model_c_et['Month'] > start_grwth_period)]
+            model_results_flux.append(model_c_et)
+
+            model_flux_df = pd.concat(model_results_flux)
+            model_flux_df['County'] = countyname
+
+            model_flux_df['ET'] = model_flux_df['Es'] + model_flux_df['Tr']
+            model_flux_df['Date'] = pd.to_datetime(model_flux_df['Year'].astype(str)  + '-'  + model_flux_df['Month'].astype(str) + '-' + '01', format='%Y-%m-%d')
+
+            model_flux_df = model_flux_df[['Date', 'Month', 'Year', 'County', 'ET']]
+            model_flux_df = model_flux_df.groupby(['County', 'Month', 'Year'], as_index=False)[['ET']].sum()
+            counties_flux.append(model_flux_df)
+
+            # Crop growth
+            model_c_crp_grwth = model_c._outputs.crop_growth
+            model_c_crp_grwth['Date'] = wdf['Date'].values
+            model_results_grwth.append(model_c_crp_grwth)
+            model_grwth_df = pd.concat(model_results_grwth)
+            model_grwth_df['County'] = countyname
+
+            counties_grwth.append(model_grwth_df)
+
+        if model_counties:
+            model_counties_df = pd.concat(model_counties)
+
+            # Bias correction
+            bias_correction_params = bias_correction_params[bias_correction_params['Crop'] == crop_name]
+            model_counties_df['Bias Corrected Yield (t/ha)'] = model_counties_df['Calib Yield (t/ha)'] + (
+                bias_correction_params['yield_m'].item() + (bias_correction_params['yield_c'].item() * model_counties_df['Calib Yield (t/ha)'])
+            )
+            model_counties_df['Bias Corrected Irrigation (mm)'] = model_counties_df['Calib Irrigation (mm)'] + (
+                bias_correction_params['irrig_m'].item() + (bias_correction_params['irrig_c'].item() * model_counties_df['Calib Irrigation (mm)'])
+            )
+
+        return model_counties_df #, county_flux_df, county_storage_df, county_gw_df, county_grwth_df (uncomment to return the ET, soil compartment moisture, water balance and crop growth dfs
        
- 
 
 def PsoResults(pso_list, df_number, *args):
     """
